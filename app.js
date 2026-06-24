@@ -38,8 +38,19 @@ function gradeColor(grade) {
   return "#b02020";
 }
 
-// Kartenfarbe je Niveaustufe (Index 0 = Note 1)
+// Kartenfarben für die AUSWAHLSEITEN: neutrale Warmgrautöne (keine Wertung)
+// Index 0 = Note 1 (sehr hell), Index 5 = Note 6 (dunkelgrau)
 const CARD_COLORS = [
+  { bg: "#f7f5f2", border: "#cdc8c0", badge: "#a8a096" },
+  { bg: "#f0ece7", border: "#b8b0a6", badge: "#968e84" },
+  { bg: "#e8e2db", border: "#a39890", badge: "#847870" },
+  { bg: "#ddd6cc", border: "#8f8278", badge: "#706560" },
+  { bg: "#d0c8bc", border: "#7a6e65", badge: "#5e5450" },
+  { bg: "#c4bbae", border: "#655c54", badge: "#4a4240" }
+];
+
+// Kartenfarben für die ERGEBNISSEITE: farbig wie ursprünglich
+const RESULT_COLORS = [
   { bg: "#eaf7f1", border: "#2d9e6b", badge: "#2d9e6b" },
   { bg: "#f0f8eb", border: "#5aab4a", badge: "#5aab4a" },
   { bg: "#fdf6e3", border: "#e8a820", badge: "#e8a820" },
@@ -193,7 +204,7 @@ function renderResult() {
   CATEGORIES.forEach((cat, i) => {
     const sel = state.selections[i];
     const noteNum = sel !== null ? sel + 1 : "–";
-    const colors = sel !== null ? CARD_COLORS[sel] : { border: "#ccc", badge: "#999" };
+    const colors = sel !== null ? RESULT_COLORS[sel] : { border: "#ccc", badge: "#999" };
     const text = sel !== null ? cat.levels[sel] : "Keine Auswahl";
 
     const item = document.createElement("div");
