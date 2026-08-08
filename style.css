@@ -19,9 +19,8 @@
 }
 
 /* ── Base ────────────────────────────────────────────────────────────────── */
+/* Inter wird per <link> in index.html geladen (paralleler Request statt @import-Kette) */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 html, body {
   height: 100%;
@@ -472,6 +471,57 @@ html, body {
   width: 100%;
 }
 
+/* E-Mail-Panel */
+.email-panel {
+  background: var(--accent-light);
+  border: 1.5px solid #cfe0f7;
+  border-radius: var(--radius-card);
+  padding: 1rem 1.1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.email-panel label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.email-panel input {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  font-size: 1rem;
+  font-family: var(--font);
+  border: 1.5px solid #b5cff2;
+  border-radius: var(--radius-btn);
+  background: var(--surface);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.email-panel input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+
+.email-hint {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.email-error {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #c0392b;
+}
+
+.email-panel .btn-primary {
+  margin-top: 0.25rem;
+}
+
 /* Share toast */
 .share-toast {
   position: fixed;
@@ -496,13 +546,70 @@ html, body {
 }
 
 /* ── Print styles ────────────────────────────────────────────────────────── */
+/* Ziel: das Ergebnis passt auf genau EINE A4-Seite. */
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
 @media print {
+  /* Nur die Ergebnisseite drucken */
   #screen-intro, #screen-category { display: none !important; }
-  #screen-result { display: block !important; }
-  .result-actions, .share-toast { display: none !important; }
-  .overall-grade-box, .breakdown-item { box-shadow: none !important; border: 1px solid #ccc !important; }
-  body { background: #fff; }
-  .result-wrap { padding: 1rem; }
+  #screen-result { display: block !important; overflow: visible !important; padding: 0 !important; }
+  .result-actions, .share-toast, .email-panel { display: none !important; }
+
+  /* Höhenbegrenzungen der Bildschirmdarstellung aufheben */
+  html, body { height: auto !important; background: #fff !important; }
+  .screen { min-height: 0 !important; }
+
+  .result-wrap {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Farben nicht wegoptimieren – sonst verschwinden die Note-Badges */
+  .overall-grade, .breakdown-note, .breakdown-item {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Kopfbereich: dekoratives Icon weg, sonst nur leicht gestrafft */
+  .result-icon { display: none !important; }
+  .result-header { margin-bottom: 1rem !important; }
+  .result-header h2 { font-size: 1.6rem !important; margin-bottom: 0.15rem !important; }
+  .result-name { font-size: 1.05rem !important; }
+
+  /* Gesamtnote – clamp()/vw muss explizit überschrieben werden */
+  .overall-grade-box {
+    padding: 1.1rem !important;
+    margin-bottom: 1rem !important;
+    border: 1px solid #bbb !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+  }
+  .overall-label { font-size: 0.7rem !important; margin-bottom: 0.2rem !important; }
+  .overall-grade { font-size: 3.4rem !important; line-height: 1 !important; }
+  .overall-grade-text { font-size: 1.05rem !important; margin-top: 0.1rem !important; }
+
+  /* Einzelkategorien einspaltig wie am Bildschirm – passt aufs Blatt */
+  .breakdown {
+    gap: 0.55rem !important;
+    margin-bottom: 0 !important;
+  }
+  .breakdown-item {
+    padding: 0.65rem 0.85rem !important;
+    border: 1px solid #bbb !important;
+    border-left: 3px solid var(--item-border) !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .breakdown-header { margin-bottom: 0.25rem !important; }
+  .breakdown-cat { font-size: 0.85rem !important; }
+  .breakdown-note { font-size: 0.65rem !important; padding: 0.18em 0.55em !important; }
+  .breakdown-text { font-size: 0.8rem !important; line-height: 1.4 !important; }
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */

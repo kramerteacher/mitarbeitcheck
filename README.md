@@ -33,7 +33,27 @@ Beispiel: Kategorie doppelt gewichten → `weight: 2.0`
 }
 ```
 
-## Link-Sharing
+## Ergebnis teilen
 
-Auf der Ergebnisseite erzeugt „Link kopieren" eine URL mit dem kodierten Ergebnis –  
-SuS können diesen Link z.B. per Schulmail an die Lehrkraft schicken.
+Das Ergebnis steckt vollständig kodiert in der URL (`?r=…`) – es wird nichts gespeichert
+und nichts an einen Server gesendet. Auf der Ergebnisseite gibt es dafür zwei Wege:
+
+**„Ergebnis teilen"** öffnet das systemeigene Sharesheet (Web Share API). Das funktioniert
+auf iPad/iPhone, in Safari auf macOS sowie in Chrome/Edge auf Windows und Android.
+Wo die API fehlt (Chrome auf macOS, Firefox Desktop), fällt der Button automatisch auf
+„Link in die Zwischenablage" zurück – ohne sichtbaren Bruch für die Nutzer.
+
+**„Ergebnis per E-Mail teilen"** klappt ein Feld für die Adresse der Lehrkraft auf und
+öffnet anschließend das E-Mail-Programm mit fertigem Betreff, Notenübersicht und Link.
+
+> Ein Versand **ohne** das E-Mail-Programm des Nutzers – oder ein PDF als Anhang – ist auf
+> einer statischen Seite technisch nicht möglich. Das bräuchte einen Server, einen
+> Mailprovider, Missbrauchsschutz und wegen der Schülerdaten eine datenschutzrechtliche
+> Freigabe. Der `mailto:`-Weg hält die Daten im Mailsystem der Schule.
+
+## PDF-Export
+
+„Drucken / Als PDF speichern" ist über `@media print` in `style.css` auf **genau eine
+A4-Seite** ausgelegt (Icon und Buttons ausgeblendet, Gesamtnote verkleinert, Abstände
+gestrafft). Im ungünstigsten Fall – längste Formulierungen, langer Name – füllt das
+Ergebnis rund 63 % der Seitenhöhe.

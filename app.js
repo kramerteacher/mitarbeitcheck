@@ -38,15 +38,15 @@ function gradeColor(grade) {
   return "#b02020";
 }
 
-// Kartenfarben für die AUSWAHLSEITEN: neutrale Warmgrautöne (keine Wertung)
-// Index 0 = Note 1 (sehr hell), Index 5 = Note 6 (dunkelgrau)
+// Kartenfarben für die AUSWAHLSEITEN: einfarbige Blauskala (keine Wertung)
+// Index 0 = Note 1 (sehr hell), Index 5 = Note 6 (kräftiges Blau)
 const CARD_COLORS = [
-  { bg: "#f7f5f2", border: "#cdc8c0", badge: "#a8a096" },
-  { bg: "#f0ece7", border: "#b8b0a6", badge: "#968e84" },
-  { bg: "#e8e2db", border: "#a39890", badge: "#847870" },
-  { bg: "#ddd6cc", border: "#8f8278", badge: "#706560" },
-  { bg: "#d0c8bc", border: "#7a6e65", badge: "#5e5450" },
-  { bg: "#c4bbae", border: "#655c54", badge: "#4a4240" }
+  { bg: "#f2f7fe", border: "#cfe0f7", badge: "#3f76ba" },
+  { bg: "#e6effb", border: "#b5cff2", badge: "#396da8" },
+  { bg: "#d8e6f8", border: "#97bbea", badge: "#326096" },
+  { bg: "#c7daf4", border: "#7aa6e0", badge: "#2a5385" },
+  { bg: "#b3cbee", border: "#5d8fd4", badge: "#224673" },
+  { bg: "#9db9e5", border: "#4176c0", badge: "#1a3860" }
 ];
 
 // Kartenfarben für die ERGEBNISSEITE: farbig wie ursprünglich
@@ -222,22 +222,110 @@ function renderResult() {
   });
 }
 
-// Print
-document.getElementById("btn-print").addEventListener("click", () => {
-  window.print();
+// ── Teilen ────────────────────────────────────────────────────────────────────
+
+// Baut die teilbare URL mit kodiertem Ergebnis
+function buildResultUrl() {
+  return window.location.href.split("?")[0] + "?r=" + encodeState();
+}
+
+function showToast(msg) {
+  const toast = document.getElementById("share-toast");
+  toast.textContent = msg;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 2500);
+}
+
+// Fallback, wenn kein System-Sharesheet verfügbar ist
+function copyLink(url) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url)
+      .then(() => showToast("Link kopiert!"))
+      .catch(() => prompt("Diesen Link kopieren:", url));
+  } else {
+    prompt("Diesen Link kopieren:", url);
+  }
+}
+
+// Kurzfassung des Ergebnisses als Klartext (für die E-Mail)
+function resultSummaryText() {
+  const lines = [];
+  if (state.studentName) lines.push(`Name: ${state.studentName}`);
+  lines.push(`Gesamtnote: ${roundToHalf(calcGrade()).toFixed(1).replace(".", ",")}`);
+  lines.push("", "Einzelkategorien:");
+  CATEGORIES.forEach((cat, i) => {
+    const sel = state.selections[i];
+    lines.push(`- ${cat.title}: Note ${sel !== null ? sel + 1 : "–"}`);
+  });
+  return lines.join("\n");
+}
+
+// Option 1: System-Sharesheet, sonst Zwischenablage
+document.getElementById("btn-share").addEventListener("click", async () => {
+  const url = buildResultUrl();
+  const shareData = {
+    title: "Selbsteinschätzung Mitarbeit",
+    text: state.studentName
+      ? `Selbsteinschätzung Mitarbeit – ${state.studentName}`
+      : "Meine Selbsteinschätzung der Mitarbeit",
+    url
+  };
+
+  if (navigator.share) {
+    try {
+      await navigator.share(shareData);
+      return;
+    } catch (err) {
+      // Nutzer hat das Sharesheet abgebrochen – dann nicht zusätzlich kopieren
+      if (err && err.name === "AbortError") return;
+      // jeder andere Fehler: unten auf die Zwischenablage zurückfallen
+    }
+  }
+  copyLink(url);
 });
 
-// Share
-document.getElementById("btn-share").addEventListener("click", () => {
-  const encoded = encodeState();
-  const url = window.location.href.split("?")[0] + "?r=" + encoded;
-  navigator.clipboard.writeText(url).then(() => {
-    const toast = document.getElementById("share-toast");
-    toast.classList.add("show");
-    setTimeout(() => toast.classList.remove("show"), 2500);
-  }).catch(() => {
-    prompt("Diesen Link kopieren:", url);
-  });
+// Option 2: E-Mail per mailto (Panel auf-/zuklappen)
+document.getElementById("btn-email").addEventListener("click", () => {
+  const panel = document.getElementById("email-panel");
+  const btn = document.getElementById("btn-email");
+  const open = panel.hidden;
+  panel.hidden = !open;
+  btn.setAttribute("aria-expanded", String(open));
+  if (open) document.getElementById("email-to").focus();
+});
+
+function sendMail() {
+  const input = document.getElementById("email-to");
+  const error = document.getElementById("email-error");
+  const to = input.value.trim();
+
+  if (!to || !input.checkValidity()) {
+    error.hidden = false;
+    input.focus();
+    return;
+  }
+  error.hidden = true;
+
+  const subject = state.studentName
+    ? `Selbsteinschätzung Mitarbeit – ${state.studentName}`
+    : "Selbsteinschätzung Mitarbeit";
+  const body = `${resultSummaryText()}\n\nVollständiges Ergebnis zum Ansehen und Ausdrucken:\n${buildResultUrl()}\n`;
+
+  window.location.href =
+    `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+document.getElementById("btn-email-send").addEventListener("click", sendMail);
+document.getElementById("email-to").addEventListener("keydown", e => {
+  if (e.key === "Enter") sendMail();
+});
+document.getElementById("email-to").addEventListener("input", () => {
+  document.getElementById("email-error").hidden = true;
+});
+
+// Option 3: Drucken
+document.getElementById("btn-print").addEventListener("click", () => {
+  window.print();
 });
 
 // Restart
@@ -246,6 +334,11 @@ document.getElementById("btn-restart").addEventListener("click", () => {
   state.selections = Array(CATEGORIES.length).fill(null);
   state.studentName = "";
   document.getElementById("student-name").value = "";
+  // E-Mail-Panel zuklappen und leeren
+  document.getElementById("email-panel").hidden = true;
+  document.getElementById("btn-email").setAttribute("aria-expanded", "false");
+  document.getElementById("email-to").value = "";
+  document.getElementById("email-error").hidden = true;
   // URL bereinigen
   history.replaceState(null, "", window.location.pathname);
   showScreen("screen-intro");
@@ -258,8 +351,16 @@ document.getElementById("btn-restart").addEventListener("click", () => {
   if (!r) return;
   const decoded = decodeState(r);
   if (!decoded) return;
-  state.studentName = decoded.n || "";
-  state.selections = decoded.s || Array(CATEGORIES.length).fill(null);
+
+  // Nur gültige Auswahlen übernehmen – ein manipulierter Link darf die Seite
+  // nicht in einen Zustand bringen, in dem calcGrade() null liefert.
+  const sel = Array.isArray(decoded.s) ? decoded.s : [];
+  state.selections = CATEGORIES.map((_, i) =>
+    Number.isInteger(sel[i]) && sel[i] >= 0 && sel[i] < 6 ? sel[i] : null
+  );
+  if (state.selections.every(v => v === null)) return;
+
+  state.studentName = typeof decoded.n === "string" ? decoded.n : "";
   document.getElementById("student-name").value = state.studentName;
   renderResult();
   showScreen("screen-result");
