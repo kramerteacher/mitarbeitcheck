@@ -8,7 +8,7 @@ Interaktives Tool zur Selbsteinschätzung der Unterrichtsmitarbeit für Schüler
 |---|---|
 | `index.html` | Struktur / Markup |
 | `style.css` | Design |
-| `data.js` | Kriterien & Gewichtung |
+| `data.js` | Kriterien, Gewichtung & Unterrichtsfächer |
 | `app.js` | Logik (Navigation, Berechnung, Sharing) |
 
 ## Auf GitHub Pages veröffentlichen
@@ -33,10 +33,31 @@ Beispiel: Kategorie doppelt gewichten → `weight: 2.0`
 }
 ```
 
+## Unterrichtsfächer anpassen
+
+Die Fächer stehen in `data.js` als `SUBJECTS`. Die Auswahl ist auf der Startseite
+verpflichtend – ohne Fach lässt sich die Einschätzung nicht starten, weil sonst genau
+der Überblick fehlt, um den es geht.
+
+Sortiert ist die Liste **alphabetisch**, nicht nach Aufgabenfeld. Die Auswahl treffen
+SuS, für die das Aufgabenfeld-Schema kein vertrautes Ordnungsprinzip ist: bei „Religion"
+oder „Politik-Wirtschaft" ist die Zuordnung nicht selbsterklärend, alphabetisch ist die
+Suchrichtung dagegen immer vorhersagbar. Dazu passt, dass ein natives `<select>` auf dem
+iPad nur wenige Einträge gleichzeitig zeigt und die Type-Ahead-Funktion am Desktop
+alphabetische Ordnung voraussetzt.
+
 ## Ergebnis teilen
 
-Das Ergebnis steckt vollständig kodiert in der URL (`?r=…`) – es wird nichts gespeichert
-und nichts an einen Server gesendet. Auf der Ergebnisseite gibt es dafür zwei Wege:
+Das Ergebnis steckt vollständig kodiert in der URL (`?r=…`) – Name, Fach, Zeitstempel und
+Auswahl. Es wird nichts gespeichert und nichts an einen Server gesendet.
+
+> Der Zeitstempel wird **beim Abschluss der Einschätzung** gesetzt und mit in den Link
+> kodiert. Deshalb zeigt das PDF der Lehrkraft den Zeitpunkt der Einschätzung und nicht
+> den, an dem der Link geöffnet wurde. Links aus der Zeit vor dieser Änderung enthalten
+> weder Fach noch Zeitstempel – dort bleiben die beiden Zeilen leer, statt ein falsches
+> Datum anzuzeigen.
+
+Auf der Ergebnisseite gibt es zwei Wege zum Teilen:
 
 **„Ergebnis teilen"** öffnet das systemeigene Sharesheet (Web Share API). Das funktioniert
 auf iPad/iPhone, in Safari auf macOS sowie in Chrome/Edge auf Windows und Android.
@@ -55,5 +76,8 @@ Wo die API fehlt (Chrome auf macOS, Firefox Desktop), fällt der Button automati
 
 „Drucken / Als PDF speichern" ist über `@media print` in `style.css` auf **genau eine
 A4-Seite** ausgelegt (Icon und Buttons ausgeblendet, Gesamtnote verkleinert, Abstände
-gestrafft). Im ungünstigsten Fall – längste Formulierungen, langer Name – füllt das
-Ergebnis rund 63 % der Seitenhöhe.
+gestrafft). Der Kopf des Ausdrucks führt Name, Fach sowie Datum und Uhrzeit.
+
+Im ungünstigsten Fall – längste Formulierungen, langer Name, längster Fachname – füllt das
+Ergebnis rund 66 % der Seitenhöhe. Wer die Kategorien in `data.js` erweitert oder die
+Formulierungen deutlich verlängert, sollte den Ausdruck erneut prüfen.

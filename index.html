@@ -21,7 +21,14 @@
         <label for="student-name">Dein Name <span class="optional">(freiwillig)</span></label>
         <input type="text" id="student-name" placeholder="Vorname Nachname" autocomplete="off" />
       </div>
-      <button class="btn-primary" id="btn-start">Einschätzung starten</button>
+      <div class="name-field">
+        <label for="student-subject">Unterrichtsfach</label>
+        <!-- Optionen werden aus SUBJECTS in data.js erzeugt -->
+        <select id="student-subject">
+          <option value="">Bitte auswählen …</option>
+        </select>
+      </div>
+      <button class="btn-primary" id="btn-start" disabled>Einschätzung starten</button>
     </div>
   </div>
 
@@ -60,6 +67,8 @@
         <div class="result-icon">★</div>
         <h2>Deine Selbsteinschätzung</h2>
         <p id="result-name-display" class="result-name"></p>
+        <p id="result-subject-display" class="result-subject"></p>
+        <p id="result-date-display" class="result-date"></p>
       </div>
 
       <div class="overall-grade-box">

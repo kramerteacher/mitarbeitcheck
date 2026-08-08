@@ -98,7 +98,8 @@ html, body {
   color: var(--text-muted);
 }
 
-.name-field input {
+.name-field input,
+.name-field select {
   width: 100%;
   padding: 0.75rem 1rem;
   font-size: 1rem;
@@ -111,9 +112,27 @@ html, body {
   transition: border-color var(--transition);
 }
 
-.name-field input:focus {
+.name-field input:focus,
+.name-field select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+
+/* Eigener Pfeil, damit das Dropdown auf allen Plattformen gleich aussieht */
+.name-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b7a90' d='M1.4 0 6 4.6 10.6 0 12 1.4 6 7.4 0 1.4z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+}
+
+/* Platzhalter-Option gedimmt, die echten Fächer normal */
+.name-field select:invalid,
+.name-field select option[value=""] {
+  color: var(--text-muted);
 }
 
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
@@ -375,6 +394,20 @@ html, body {
   color: var(--accent);
 }
 
+.result-subject {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 0.2rem;
+}
+
+.result-date {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
 /* Overall grade box */
 .overall-grade-box {
   background: var(--surface);
@@ -579,6 +612,8 @@ html, body {
   .result-header { margin-bottom: 1rem !important; }
   .result-header h2 { font-size: 1.6rem !important; margin-bottom: 0.15rem !important; }
   .result-name { font-size: 1.05rem !important; }
+  .result-subject { font-size: 1rem !important; margin-top: 0.15rem !important; }
+  .result-date { font-size: 0.8rem !important; margin-top: 0.15rem !important; }
 
   /* Gesamtnote – clamp()/vw muss explizit überschrieben werden */
   .overall-grade-box {

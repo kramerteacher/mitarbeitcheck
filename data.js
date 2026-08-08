@@ -89,6 +89,31 @@ const CATEGORIES = [
   }
 ];
 
+// Unterrichtsfächer für das Dropdown auf der Startseite.
+// Alphabetisch sortiert: die Auswahl treffen SuS, für die das
+// Aufgabenfeld-Schema kein vertrautes Ordnungsprinzip ist.
+const SUBJECTS = [
+  "Biologie",
+  "Chemie",
+  "Darstellendes Spiel",
+  "Deutsch",
+  "Englisch",
+  "Erdkunde",
+  "Französisch",
+  "Geschichte",
+  "Informatik",
+  "Kunst",
+  "Mathematik",
+  "Musik",
+  "Physik",
+  "Politik-Wirtschaft",
+  "Religion",
+  "Spanisch",
+  "Sport",
+  "Werte und Normen",
+  "Wirtschaft"
+];
+
 // Notenbezeichnungen
 const GRADE_LABELS = {
   1: "Sehr gut",

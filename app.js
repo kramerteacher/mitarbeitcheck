@@ -4,7 +4,9 @@
 const state = {
   currentCat: 0,
   selections: Array(CATEGORIES.length).fill(null), // index 0–5 = Note 1–6
-  studentName: ""
+  studentName: "",
+  subject: "",
+  timestamp: null // Zeitpunkt des Abschlusses, wandert mit in den Share-Link
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -59,10 +61,25 @@ const RESULT_COLORS = [
   { bg: "#fbe9e9", border: "#b02020", badge: "#b02020" }
 ];
 
+// Datum/Uhrzeit deutsch formatiert, z.B. "08.08.2026, 14:32 Uhr"
+function formatTimestamp(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleString("de-DE", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit"
+  }) + " Uhr";
+}
+
 // Encode/Decode State für URL-Sharing
+// f = Fach, t = Zeitstempel. Beide müssen mitkodiert werden, damit die Lehrkraft
+// im geteilten Link den Zeitpunkt der Einschätzung sieht – nicht den des Öffnens.
 function encodeState() {
   const obj = {
     n: state.studentName,
+    f: state.subject,
+    t: state.timestamp,
     s: state.selections
   };
   return btoa(encodeURIComponent(JSON.stringify(obj)));
@@ -83,8 +100,28 @@ function showScreen(id) {
 }
 
 // ── Intro Screen ─────────────────────────────────────────────────────────────
+
+// Fächer-Dropdown aus data.js aufbauen
+(function buildSubjectOptions() {
+  const select = document.getElementById("student-subject");
+  SUBJECTS.forEach(name => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    select.appendChild(opt);
+  });
+})();
+
+// Ohne Fach kein Start – der Überblick über mehrere Einschätzungen
+// funktioniert nur, wenn das Fach gesetzt ist.
+document.getElementById("student-subject").addEventListener("change", e => {
+  document.getElementById("btn-start").disabled = !e.target.value;
+});
+
 document.getElementById("btn-start").addEventListener("click", () => {
   state.studentName = document.getElementById("student-name").value.trim();
+  state.subject = document.getElementById("student-subject").value;
+  if (!state.subject) return;
   state.currentCat = 0;
   renderCategory();
   showScreen("screen-category");
@@ -162,6 +199,8 @@ document.getElementById("btn-next").addEventListener("click", () => {
     // Smooth scroll nach oben
     document.getElementById("screen-category").scrollTo({ top: 0, behavior: "smooth" });
   } else {
+    // Abschlusszeitpunkt festhalten (bei Korrekturen über "Zurück" aktualisiert er sich)
+    state.timestamp = Date.now();
     renderResult();
     showScreen("screen-result");
   }
@@ -182,6 +221,18 @@ function renderResult() {
   const nameEl = document.getElementById("result-name-display");
   nameEl.textContent = state.studentName ? `${state.studentName}` : "";
   nameEl.style.display = state.studentName ? "block" : "none";
+
+  // Fach
+  const subjEl = document.getElementById("result-subject-display");
+  subjEl.textContent = state.subject;
+  subjEl.style.display = state.subject ? "block" : "none";
+
+  // Datum/Uhrzeit – bei alten Share-Links ohne Zeitstempel bleibt die Zeile leer,
+  // besser als ein falsches Datum anzuzeigen
+  const dateEl = document.getElementById("result-date-display");
+  const dateText = formatTimestamp(state.timestamp);
+  dateEl.textContent = dateText;
+  dateEl.style.display = dateText ? "block" : "none";
 
   // Gesamtnote
   const rawGrade = calcGrade();
@@ -248,9 +299,19 @@ function copyLink(url) {
 }
 
 // Kurzfassung des Ergebnisses als Klartext (für die E-Mail)
+// Betreffzeile / Sharesheet-Titel: "Selbsteinschätzung Mitarbeit – Mathematik – Lena Schmidt"
+function resultHeadline() {
+  return ["Selbsteinschätzung Mitarbeit", state.subject, state.studentName]
+    .filter(Boolean)
+    .join(" – ");
+}
+
 function resultSummaryText() {
   const lines = [];
   if (state.studentName) lines.push(`Name: ${state.studentName}`);
+  if (state.subject) lines.push(`Fach: ${state.subject}`);
+  const dateText = formatTimestamp(state.timestamp);
+  if (dateText) lines.push(`Zeitpunkt: ${dateText}`);
   lines.push(`Gesamtnote: ${roundToHalf(calcGrade()).toFixed(1).replace(".", ",")}`);
   lines.push("", "Einzelkategorien:");
   CATEGORIES.forEach((cat, i) => {
@@ -265,9 +326,7 @@ document.getElementById("btn-share").addEventListener("click", async () => {
   const url = buildResultUrl();
   const shareData = {
     title: "Selbsteinschätzung Mitarbeit",
-    text: state.studentName
-      ? `Selbsteinschätzung Mitarbeit – ${state.studentName}`
-      : "Meine Selbsteinschätzung der Mitarbeit",
+    text: resultHeadline(),
     url
   };
 
@@ -306,9 +365,7 @@ function sendMail() {
   }
   error.hidden = true;
 
-  const subject = state.studentName
-    ? `Selbsteinschätzung Mitarbeit – ${state.studentName}`
-    : "Selbsteinschätzung Mitarbeit";
+  const subject = resultHeadline();
   const body = `${resultSummaryText()}\n\nVollständiges Ergebnis zum Ansehen und Ausdrucken:\n${buildResultUrl()}\n`;
 
   window.location.href =
@@ -333,7 +390,11 @@ document.getElementById("btn-restart").addEventListener("click", () => {
   state.currentCat = 0;
   state.selections = Array(CATEGORIES.length).fill(null);
   state.studentName = "";
+  state.subject = "";
+  state.timestamp = null;
   document.getElementById("student-name").value = "";
+  document.getElementById("student-subject").value = "";
+  document.getElementById("btn-start").disabled = true;
   // E-Mail-Panel zuklappen und leeren
   document.getElementById("email-panel").hidden = true;
   document.getElementById("btn-email").setAttribute("aria-expanded", "false");
@@ -361,7 +422,15 @@ document.getElementById("btn-restart").addEventListener("click", () => {
   if (state.selections.every(v => v === null)) return;
 
   state.studentName = typeof decoded.n === "string" ? decoded.n : "";
+  // Fach nur übernehmen, wenn es wirklich eins aus der Liste ist
+  state.subject = SUBJECTS.includes(decoded.f) ? decoded.f : "";
+  state.timestamp = Number.isFinite(decoded.t) ? decoded.t : null;
+
   document.getElementById("student-name").value = state.studentName;
+  if (state.subject) {
+    document.getElementById("student-subject").value = state.subject;
+    document.getElementById("btn-start").disabled = false;
+  }
   renderResult();
   showScreen("screen-result");
 })();
