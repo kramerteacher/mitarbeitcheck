@@ -271,6 +271,255 @@ function renderResult() {
     `;
     breakdown.appendChild(item);
   });
+
+  // Bild im Voraus erzeugen, damit der Teilen-Klick ohne Wartezeit auskommt
+  prepareResultImage();
+}
+
+// ── Ergebnisbild ──────────────────────────────────────────────────────────────
+// Von Hand auf ein Canvas gezeichnet statt per Bibliothek: html2canvas & Co. wären
+// ~200 KB und scheitern auf iOS Safari gern an Webfonts und CSS-Variablen.
+
+const IMG = {
+  width: 1000,
+  pad: 56,
+  scale: 2 // doppelte Auflösung, damit es auf Retina-Displays scharf bleibt
+};
+
+function imgFont(weight, size) {
+  return `${weight} ${size}px Inter, system-ui, -apple-system, sans-serif`;
+}
+
+// ctx.roundRect fehlt auf älteren iPads – deshalb von Hand über arcTo
+function roundedRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function wrapLines(ctx, text, maxWidth) {
+  const lines = [];
+  let line = "";
+  String(text).split(/\s+/).forEach(word => {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width <= maxWidth || !line) {
+      line = test;
+    } else {
+      lines.push(line);
+      line = word;
+    }
+  });
+  if (line) lines.push(line);
+  return lines;
+}
+
+// Schriftgröße so weit verkleinern, bis der Text in die Breite passt
+function fitFont(ctx, text, weight, startSize, maxWidth, minSize) {
+  let size = startSize;
+  ctx.font = imgFont(weight, size);
+  while (ctx.measureText(text).width > maxWidth && size > minSize) {
+    size -= 1;
+    ctx.font = imgFont(weight, size);
+  }
+  return size;
+}
+
+// Inter muss geladen sein, bevor gezeichnet wird – sonst fällt Canvas still auf
+// eine Systemschrift zurück und alle vorab gemessenen Breiten stimmen nicht mehr.
+async function ensureFonts() {
+  if (!document.fonts || !document.fonts.load) return;
+  try {
+    await Promise.all([
+      document.fonts.load(imgFont(400, 25)),
+      document.fonts.load(imgFont(600, 30)),
+      document.fonts.load(imgFont(700, 27)),
+      document.fonts.load(imgFont(800, 46))
+    ]);
+    await document.fonts.ready;
+  } catch (e) {
+    // Ohne Inter sieht das Bild anders aus, erzeugt wird es trotzdem
+  }
+}
+
+async function renderResultImage() {
+  await ensureFonts();
+
+  const W = IMG.width;
+  const pad = IMG.pad;
+  const contentW = W - pad * 2;
+
+  const itemPadX = 28;
+  const itemPadY = 26;
+  const barW = 6;
+  const lineH = 34;
+  const textW = contentW - itemPadX * 2 - barW - 10;
+
+  // Messdurchlauf: erst die Gesamthöhe bestimmen, dann das Canvas anlegen
+  const probe = document.createElement("canvas").getContext("2d");
+
+  const items = CATEGORIES.map((cat, i) => {
+    const sel = state.selections[i];
+    const colors = sel !== null ? RESULT_COLORS[sel] : { border: "#cccccc", badge: "#999999" };
+    probe.font = imgFont(400, 25);
+    const lines = wrapLines(probe, sel !== null ? cat.levels[sel] : "Keine Auswahl", textW);
+    return {
+      title: cat.title,
+      note: sel !== null ? sel + 1 : "–",
+      colors,
+      lines,
+      height: itemPadY * 2 + 30 + 14 + lines.length * lineH
+    };
+  });
+
+  const metaLine = [state.subject, formatTimestamp(state.timestamp)].filter(Boolean).join(" · ");
+  const hasName = !!state.studentName;
+  const nameSize = hasName ? fitFont(probe, state.studentName, 800, 46, contentW, 26) : 0;
+
+  const gradeBoxH = 230;
+  let headerH = 22 + 26;
+  if (hasName) headerH += 46 + 14;
+  if (metaLine) headerH += 26;
+  headerH += 40;
+
+  const itemsH = items.reduce((sum, it) => sum + it.height, 0) + (items.length - 1) * 14;
+  const totalH = Math.round(pad + headerH + gradeBoxH + 36 + itemsH + pad);
+
+  // Zeichnen
+  const canvas = document.createElement("canvas");
+  canvas.width = W * IMG.scale;
+  canvas.height = totalH * IMG.scale;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(IMG.scale, IMG.scale);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, totalH);
+
+  let y = pad;
+
+  ctx.textAlign = "left";
+  ctx.font = imgFont(700, 22);
+  ctx.fillStyle = "#2563eb";
+  ctx.fillText("SELBSTEINSCHÄTZUNG MITARBEIT", pad, y + 18);
+  y += 22 + 26;
+
+  if (hasName) {
+    ctx.font = imgFont(800, nameSize);
+    ctx.fillStyle = "#1a2030";
+    ctx.fillText(state.studentName, pad, y + 38);
+    y += 46 + 14;
+  }
+
+  if (metaLine) {
+    ctx.font = imgFont(600, 26);
+    ctx.fillStyle = "#6b7a90";
+    ctx.fillText(metaLine, pad, y + 21);
+    y += 26;
+  }
+  y += 40;
+
+  // Notenbox
+  const rawGrade = calcGrade();
+  const rounded = roundToHalf(rawGrade);
+  const gradeInt = Math.min(6, Math.max(1, Math.round(rawGrade)));
+
+  roundedRect(ctx, pad, y, contentW, gradeBoxH, 18);
+  ctx.fillStyle = "#f8fafc";
+  ctx.fill();
+  ctx.strokeStyle = "#e2e6ea";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.textAlign = "center";
+  ctx.font = imgFont(700, 20);
+  ctx.fillStyle = "#6b7a90";
+  ctx.fillText("GESAMTNOTE", W / 2, y + 48);
+
+  ctx.font = imgFont(800, 108);
+  ctx.fillStyle = gradeColor(rounded);
+  ctx.fillText(rounded.toFixed(1).replace(".", ","), W / 2, y + 160);
+
+  ctx.font = imgFont(600, 30);
+  ctx.fillStyle = "#6b7a90";
+  ctx.fillText(GRADE_LABELS[gradeInt] || "", W / 2, y + 202);
+
+  y += gradeBoxH + 36;
+  ctx.textAlign = "left";
+
+  // Einzelkategorien
+  items.forEach(it => {
+    roundedRect(ctx, pad, y, contentW, it.height, 14);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+    ctx.strokeStyle = "#e2e6ea";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Farbbalken an der linken Kante, auf die runde Ecke beschnitten
+    ctx.save();
+    roundedRect(ctx, pad, y, contentW, it.height, 14);
+    ctx.clip();
+    ctx.fillStyle = it.colors.border;
+    ctx.fillRect(pad, y, barW, it.height);
+    ctx.restore();
+
+    const tx = pad + barW + itemPadX;
+    let ty = y + itemPadY;
+
+    // Note-Badge rechts
+    const badgeText = `Note ${it.note}`;
+    ctx.font = imgFont(800, 20);
+    const badgeW = ctx.measureText(badgeText).width + 28;
+    const badgeX = pad + contentW - itemPadX - badgeW;
+    roundedRect(ctx, badgeX, ty, badgeW, 34, 8);
+    ctx.fillStyle = it.colors.badge;
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.fillText(badgeText, badgeX + badgeW / 2, ty + 23);
+    ctx.textAlign = "left";
+
+    // Kategorietitel – notfalls verkleinert, damit er nicht unters Badge läuft
+    fitFont(ctx, it.title, 700, 27, badgeX - tx - 16, 18);
+    ctx.fillStyle = "#1a2030";
+    ctx.fillText(it.title, tx, ty + 24);
+    ty += 30 + 14;
+
+    // Gewählte Formulierung
+    ctx.font = imgFont(400, 25);
+    ctx.fillStyle = "#6b7a90";
+    it.lines.forEach(line => {
+      ctx.fillText(line, tx, ty + 20);
+      ty += lineH;
+    });
+
+    y += it.height + 14;
+  });
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      blob => (blob ? resolve(blob) : reject(new Error("toBlob lieferte nichts"))),
+      "image/png"
+    );
+  });
+}
+
+// Dateiname wie "Mitarbeit_Mathematik_Lena-Schmidt_2026-10-28.png"
+function imageFilename() {
+  const d = state.timestamp ? new Date(state.timestamp) : new Date();
+  const datum = [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0")
+  ].join("-");
+
+  return ["Mitarbeit", state.subject, state.studentName, datum]
+    .filter(Boolean)
+    .join("_")
+    .replace(/[^\p{L}\p{N}_-]+/gu, "-") + ".png";
 }
 
 // ── Teilen ────────────────────────────────────────────────────────────────────
@@ -287,19 +536,7 @@ function showToast(msg) {
   setTimeout(() => toast.classList.remove("show"), 2500);
 }
 
-// Fallback, wenn kein System-Sharesheet verfügbar ist
-function copyLink(url) {
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(url)
-      .then(() => showToast("Link kopiert!"))
-      .catch(() => prompt("Diesen Link kopieren:", url));
-  } else {
-    prompt("Diesen Link kopieren:", url);
-  }
-}
-
-// Kurzfassung des Ergebnisses als Klartext (für die E-Mail)
-// Betreffzeile / Sharesheet-Titel: "Selbsteinschätzung Mitarbeit – Mathematik – Lena Schmidt"
+// Betreffzeile für die E-Mail: "Selbsteinschätzung Mitarbeit – Mathematik – Lena Schmidt"
 function resultHeadline() {
   return ["Selbsteinschätzung Mitarbeit", state.subject, state.studentName]
     .filter(Boolean)
@@ -321,29 +558,92 @@ function resultSummaryText() {
   return lines.join("\n");
 }
 
-// Option 1: System-Sharesheet, sonst Zwischenablage
-document.getElementById("btn-share").addEventListener("click", async () => {
-  const url = buildResultUrl();
-  const shareData = {
-    title: "Selbsteinschätzung Mitarbeit",
-    text: resultHeadline(),
-    url
-  };
+// Das Bild wird schon beim Aufbau der Ergebnisseite erzeugt, nicht erst beim Klick.
+// Grund: iOS verlangt, dass navigator.share() unmittelbar aus der Nutzergeste heraus
+// aufgerufen wird. Wer davor noch rendert und awaitet, verliert sie und bekommt
+// sporadische "not a user gesture"-Abbrüche.
+let pendingImage = null;
 
-  if (navigator.share) {
-    try {
-      await navigator.share(shareData);
-      return;
-    } catch (err) {
-      // Nutzer hat das Sharesheet abgebrochen – dann nicht zusätzlich kopieren
-      if (err && err.name === "AbortError") return;
-      // jeder andere Fehler: unten auf die Zwischenablage zurückfallen
-    }
+function prepareResultImage() {
+  pendingImage = null;
+  renderResultImage()
+    .then(blob => { pendingImage = new File([blob], imageFilename(), { type: "image/png" }); })
+    .catch(() => { pendingImage = null; });
+}
+
+function downloadFile(file) {
+  const url = URL.createObjectURL(file);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+// Hauptweg: Bild ins Sharesheet. Bewusst NUR files übergeben – sobald zusätzlich
+// text/url gesetzt sind, entscheidet iOS selbst, was beim Ziel ankommt, und kopiert
+// dann gern nur die Titelzeile statt des eigentlichen Inhalts.
+document.getElementById("btn-image").addEventListener("click", () => {
+  if (pendingImage && navigator.canShare && navigator.canShare({ files: [pendingImage] })) {
+    const file = pendingImage;
+    navigator.share({ files: [file] }).catch(err => {
+      if (err && err.name === "AbortError") return; // Nutzer hat abgebrochen
+      downloadFile(file);
+    });
+    return;
   }
-  copyLink(url);
+
+  if (pendingImage) {
+    downloadFile(pendingImage);
+    showToast("Bild gespeichert");
+    return;
+  }
+
+  // Noch nicht fertig oder fehlgeschlagen: jetzt erzeugen und herunterladen.
+  // Teilen geht hier nicht mehr, die Geste ist nach dem await verbraucht.
+  showToast("Bild wird erstellt …");
+  renderResultImage()
+    .then(blob => {
+      downloadFile(new File([blob], imageFilename(), { type: "image/png" }));
+      showToast("Bild gespeichert");
+    })
+    .catch(() => showToast("Bild konnte nicht erstellt werden"));
 });
 
-// Option 2: E-Mail per mailto (Panel auf-/zuklappen)
+// Link: direkt in die Zwischenablage, ohne Sharesheet dazwischen
+function showLinkFallback(url) {
+  const field = document.getElementById("link-field");
+  document.getElementById("link-fallback").hidden = false;
+  field.value = url;
+  field.focus();
+  field.setSelectionRange(0, url.length); // iOS markiert sonst nichts
+}
+
+document.getElementById("btn-copy").addEventListener("click", () => {
+  const url = buildResultUrl();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url)
+      .then(() => {
+        document.getElementById("link-fallback").hidden = true;
+        showToast("Link kopiert!");
+      })
+      .catch(() => showLinkFallback(url));
+  } else {
+    showLinkFallback(url);
+  }
+});
+
+// "Weitere Optionen" auf-/zuklappen
+document.getElementById("btn-more").addEventListener("click", () => {
+  const panel = document.getElementById("more-panel");
+  const open = panel.hidden;
+  panel.hidden = !open;
+  document.getElementById("btn-more").setAttribute("aria-expanded", String(open));
+});
+
+// E-Mail per mailto (Panel auf-/zuklappen)
 document.getElementById("btn-email").addEventListener("click", () => {
   const panel = document.getElementById("email-panel");
   const btn = document.getElementById("btn-email");
@@ -380,7 +680,7 @@ document.getElementById("email-to").addEventListener("input", () => {
   document.getElementById("email-error").hidden = true;
 });
 
-// Option 3: Drucken
+// Drucken
 document.getElementById("btn-print").addEventListener("click", () => {
   window.print();
 });
@@ -395,7 +695,13 @@ document.getElementById("btn-restart").addEventListener("click", () => {
   document.getElementById("student-name").value = "";
   document.getElementById("student-subject").value = "";
   document.getElementById("btn-start").disabled = true;
-  // E-Mail-Panel zuklappen und leeren
+  // Vorbereitetes Bild verwerfen
+  pendingImage = null;
+  // Aufgeklappte Bereiche schließen und leeren
+  document.getElementById("more-panel").hidden = true;
+  document.getElementById("btn-more").setAttribute("aria-expanded", "false");
+  document.getElementById("link-fallback").hidden = true;
+  document.getElementById("link-field").value = "";
   document.getElementById("email-panel").hidden = true;
   document.getElementById("btn-email").setAttribute("aria-expanded", "false");
   document.getElementById("email-to").value = "";

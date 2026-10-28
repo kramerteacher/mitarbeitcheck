@@ -57,15 +57,46 @@ Auswahl. Es wird nichts gespeichert und nichts an einen Server gesendet.
 > weder Fach noch Zeitstempel – dort bleiben die beiden Zeilen leer, statt ein falsches
 > Datum anzuzeigen.
 
-Auf der Ergebnisseite gibt es zwei Wege zum Teilen:
+Die Ergebnisseite ist bewusst gestaffelt: **„Als Bild speichern"** ist die Hauptaktion,
+**„Link kopieren"** steht daneben, Drucken und E-Mail liegen hinter „Weitere Optionen".
+Grund ist beobachtetes Nutzungsverhalten – SuS verschicken bevorzugt Screenshots und
+nutzen die Mail-App auf den iPads praktisch gar nicht.
 
-**„Ergebnis teilen"** öffnet das systemeigene Sharesheet (Web Share API). Das funktioniert
-auf iPad/iPhone, in Safari auf macOS sowie in Chrome/Edge auf Windows und Android.
-Wo die API fehlt (Chrome auf macOS, Firefox Desktop), fällt der Button automatisch auf
-„Link in die Zwischenablage" zurück – ohne sichtbaren Bruch für die Nutzer.
+### „Als Bild speichern"
 
-**„Ergebnis per E-Mail teilen"** klappt ein Feld für die Adresse der Lehrkraft auf und
-öffnet anschließend das E-Mail-Programm mit fertigem Betreff, Notenübersicht und Link.
+Erzeugt ein PNG mit dem vollständigen Ergebnis (Name, Fach, Zeitpunkt, Gesamtnote und alle
+sechs Kategorien samt gewählter Formulierung) und übergibt es dem Sharesheet. Auf dem iPad
+erscheint damit dasselbe Menü wie beim Screenshot-Teilen: „Bild sichern" legt es in *Fotos*,
+oder es geht direkt an IServ. Wo `navigator.share` mit Dateien fehlt (Desktop-Chrome,
+Firefox), wird die Datei stattdessen heruntergeladen.
+
+Gezeichnet wird per Canvas von Hand, ohne Bibliothek – `html2canvas` & Co. wären ~200 KB
+und scheitern auf iOS Safari gern an Webfonts und CSS-Variablen. Zwei Details sind wichtig:
+
+- Das Bild wird **vorab** beim Aufbau der Ergebnisseite erzeugt, nicht erst beim Klick.
+  iOS verlangt, dass `navigator.share()` unmittelbar aus der Nutzergeste heraus läuft; wer
+  davor noch rendert und `await`et, verliert sie und bekommt sporadische Abbrüche.
+- `ensureFonts()` wartet auf Inter, bevor gezeichnet wird. Sonst fällt Canvas still auf eine
+  Systemschrift zurück und die vorab gemessenen Textbreiten stimmen nicht mehr.
+
+### „Link kopieren"
+
+Schreibt die URL direkt über `navigator.clipboard.writeText()` – **bewusst ohne Sharesheet**.
+
+> Früher lief das über `navigator.share({ title, text, url })`. Sind `text` und `url`
+> gleichzeitig gesetzt, bekommt das iOS-Sharesheet zwei Elemente und entscheidet selbst,
+> welches beim Ziel ankommt; bei „Kopieren" und beim Einfügen in Fremd-Apps gewann
+> regelmäßig `text`, also nur die Titelzeile. Ein direkter Schreibvorgang in die
+> Zwischenablage hat diese Mehrdeutigkeit nicht. Aus demselben Grund übergibt der
+> Bild-Button **nur** `files` und kein `text`/`url` daneben.
+
+Schlägt der Zugriff fehl (blockierte Zwischenablage), erscheint stattdessen ein Feld mit
+dem vormarkierten Link zum manuellen Kopieren.
+
+### „Ergebnis per E-Mail teilen"
+
+Klappt ein Feld für die Adresse der Lehrkraft auf und öffnet das E-Mail-Programm mit
+fertigem Betreff, Notenübersicht und Link.
 
 > Ein Versand **ohne** das E-Mail-Programm des Nutzers – oder ein PDF als Anhang – ist auf
 > einer statischen Seite technisch nicht möglich. Das bräuchte einen Server, einen
@@ -79,5 +110,19 @@ A4-Seite** ausgelegt (Icon und Buttons ausgeblendet, Gesamtnote verkleinert, Abs
 gestrafft). Der Kopf des Ausdrucks führt Name, Fach sowie Datum und Uhrzeit.
 
 Im ungünstigsten Fall – längste Formulierungen, langer Name, längster Fachname – füllt das
-Ergebnis rund 66 % der Seitenhöhe. Wer die Kategorien in `data.js` erweitert oder die
+Ergebnis rund 65 % der Seitenhöhe. Wer die Kategorien in `data.js` erweitert oder die
 Formulierungen deutlich verlängert, sollte den Ausdruck erneut prüfen.
+
+## Stolperfalle: `hidden` und `display`
+
+Aufklappbare Bereiche (`.more-panel`, `.email-panel`, `.link-fallback`) tragen das
+`hidden`-Attribut. Author-Styles schlagen aber die UA-Regel `[hidden] { display: none }`,
+sodass ein `display: flex` aus der Klasse gewinnt und das Panel trotz `hidden` sichtbar
+bleibt. Deshalb steht ganz oben in `style.css`:
+
+```css
+[hidden] { display: none !important; }
+```
+
+Wer ein neues aufklappbares Element mit eigenem `display` anlegt, sollte das im Blick
+behalten – der Fehler ist still und fällt nur im geschlossenen Zustand auf.

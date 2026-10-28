@@ -22,6 +22,11 @@
 /* Inter wird per <link> in index.html geladen (paralleler Request statt @import-Kette) */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Muss vor allen Klassen stehen und !important tragen: Author-Styles schlagen die
+   UA-Regel [hidden] { display: none }, sonst rendert ein .email-panel mit
+   display:flex trotz hidden-Attribut weiter. */
+[hidden] { display: none !important; }
+
 html, body {
   height: 100%;
   font-family: var(--font);
@@ -503,6 +508,116 @@ html, body {
 .result-actions .btn-ghost {
   width: 100%;
 }
+
+/* Hauptaktion: bewusst größer als alles andere auf der Seite */
+.btn-image {
+  padding: 1.1rem 1.75rem;
+  font-size: 1.1rem;
+  gap: 0.6em;
+}
+
+.btn-image-icon {
+  font-size: 1.3em;
+  line-height: 1;
+}
+
+/* Notnagel-Feld für den Link, wenn die Zwischenablage nicht darf */
+.link-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.85rem 1rem;
+  background: var(--accent-light);
+  border: 1.5px solid #cfe0f7;
+  border-radius: var(--radius-card);
+}
+
+.link-fallback label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.link-fallback input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.85rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  border: 1.5px solid #b5cff2;
+  border-radius: var(--radius-btn);
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+/* "Weitere Optionen" – reiner Textschalter, tritt deutlich zurück */
+.btn-more {
+  align-self: center;
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: var(--font);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--transition);
+}
+
+.btn-more:hover { color: var(--text-primary); }
+
+.btn-more-chevron {
+  display: inline-block;
+  transition: transform var(--transition);
+}
+
+.btn-more[aria-expanded="true"] .btn-more-chevron {
+  transform: rotate(180deg);
+}
+
+.more-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Sekundäraktionen im Ausklappbereich */
+.btn-subtle {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: var(--font);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-subtle:hover {
+  color: var(--text-primary);
+  border-color: #b0b8c8;
+  background: var(--surface);
+}
+
+/* Neu starten tritt am weitesten zurück */
+.btn-restart {
+  align-self: center;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: var(--font);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--transition);
+}
+
+.btn-restart:hover { color: var(--text-primary); }
 
 /* E-Mail-Panel */
 .email-panel {

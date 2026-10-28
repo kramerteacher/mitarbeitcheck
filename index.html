@@ -82,21 +82,40 @@
       </div>
 
       <div class="result-actions">
-        <button class="btn-primary" id="btn-share">🔗 Ergebnis teilen</button>
+        <!-- Hauptweg: fertiges Bild ins Sharesheet (iPad) bzw. Download (Desktop) -->
+        <button class="btn-primary btn-image" id="btn-image">
+          <span class="btn-image-icon" aria-hidden="true">🖼</span>
+          <span>Als Bild speichern</span>
+        </button>
 
-        <button class="btn-ghost" id="btn-email" aria-expanded="false" aria-controls="email-panel">✉ Ergebnis per E-Mail teilen</button>
+        <!-- Direkt in die Zwischenablage, bewusst ohne Sharesheet -->
+        <button class="btn-ghost" id="btn-copy">🔗 Link kopieren</button>
 
-        <!-- Aufklappbares Empfängerfeld für den mailto-Versand -->
-        <div class="email-panel" id="email-panel" hidden>
-          <label for="email-to">E-Mail-Adresse der Lehrkraft</label>
-          <input type="email" id="email-to" placeholder="name@schule.de" autocomplete="email" spellcheck="false" />
-          <p class="email-hint">Es öffnet sich dein E-Mail-Programm mit dem fertigen Text – du musst nur noch auf „Senden" tippen.</p>
-          <p class="email-error" id="email-error" hidden>Bitte gib eine gültige E-Mail-Adresse ein.</p>
-          <button class="btn-primary" id="btn-email-send">E-Mail vorbereiten</button>
+        <!-- Sichtbarer Notnagel, falls die Zwischenablage blockiert ist -->
+        <div class="link-fallback" id="link-fallback" hidden>
+          <label for="link-field">Link von Hand kopieren:</label>
+          <input type="text" id="link-field" readonly />
         </div>
 
-        <button class="btn-ghost" id="btn-print">🖨 Drucken / Als PDF speichern</button>
-        <button class="btn-ghost" id="btn-restart">↩ Neu starten</button>
+        <button class="btn-more" id="btn-more" aria-expanded="false" aria-controls="more-panel">
+          Weitere Optionen <span class="btn-more-chevron" aria-hidden="true">⌄</span>
+        </button>
+
+        <div class="more-panel" id="more-panel" hidden>
+          <button class="btn-subtle" id="btn-print">🖨 Drucken / Als PDF speichern</button>
+          <button class="btn-subtle" id="btn-email" aria-expanded="false" aria-controls="email-panel">✉ Ergebnis per E-Mail teilen</button>
+
+          <!-- Aufklappbares Empfängerfeld für den mailto-Versand -->
+          <div class="email-panel" id="email-panel" hidden>
+            <label for="email-to">E-Mail-Adresse der Lehrkraft</label>
+            <input type="email" id="email-to" placeholder="name@schule.de" autocomplete="email" spellcheck="false" />
+            <p class="email-hint">Es öffnet sich dein E-Mail-Programm mit dem fertigen Text – du musst nur noch auf „Senden" tippen.</p>
+            <p class="email-error" id="email-error" hidden>Bitte gib eine gültige E-Mail-Adresse ein.</p>
+            <button class="btn-primary" id="btn-email-send">E-Mail vorbereiten</button>
+          </div>
+        </div>
+
+        <button class="btn-restart" id="btn-restart">↩ Neu starten</button>
       </div>
 
       <div class="share-toast" id="share-toast">Link kopiert!</div>
